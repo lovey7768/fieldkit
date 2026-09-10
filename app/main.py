@@ -5,6 +5,8 @@ import json
 import hashlib
 from app.config import settings
 from app.security import verify_hmac_signature
+from app.database import init_db
+import app.models  # noqa: F401 — registers models on Base.metadata before init_db()
 
 # Redis connection pool
 redis_client: aioredis.Redis | None = None
@@ -12,6 +14,9 @@ redis_client: aioredis.Redis | None = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global redis_client
+    # Initialize Postgres tables
+    await init_db()
+    # Initialize Redis connection
     redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=False)
     yield
     if redis_client:
