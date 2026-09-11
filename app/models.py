@@ -27,3 +27,18 @@ class PIIVault(Base):
     pii_type = Column(String(20), nullable=False)  # 'EMAIL' or 'PHONE'
     encrypted_value = Column(Text, nullable=False)  # Fernet AES-128-CBC + HMAC-SHA256
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class DeadLetterQueue(Base):
+    """
+    Stores events that failed terminal delivery (e.g. ERP outages after retries).
+    Provides visibility and operational replay capability.
+    """
+    __tablename__ = "dead_letter_events"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_id = Column(String(64), index=True, nullable=False)
+    destination = Column(String(50), nullable=False)  # e.g. "ERP_SYNC"
+    error_reason = Column(Text, nullable=False)
+    attempts = Column(Integer, nullable=False, default=0)
+    payload = Column(JSON, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
