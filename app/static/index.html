@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>FieldKit — Mobile Operations</title>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #10b981;
+      --danger: #ef4444;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+      line-height: 1.5;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    h1 { font-size: 1.25rem; font-weight: 700; }
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      text-transform: uppercase;
+    }
+    .badge.online { background: rgba(16, 185, 129, 0.2); color: var(--success); border: 1px solid var(--success); }
+    .badge.offline { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid var(--danger); }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .card h2 { font-size: 1rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn-secondary { background: #475569; }
+    .btn-secondary:hover { background: #334155; }
+    .btn-success { background: var(--success); }
+    .btn-success:hover { background: #059669; }
+    #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-top: 10px; background: #000; }
+    .data-row { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.875rem; }
+    .data-value { font-family: monospace; color: var(--accent); word-break: break-all; }
+    #photo-preview img {
+      width: 100%;
+      max-height: 200px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-top: 10px;
+      border: 1px solid var(--border);
+    }
+    .status-banner {
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      margin-top: 10px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🛠️ FieldKit</h1>
+    <span id="network-badge" class="badge online">Online</span>
+  </header>
+
+  <div class="card">
+    <div class="data-row">
+      <span>Queued Local Records:</span>
+      <strong id="queue-count" class="data-value">0</strong>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📷 1. Scan Asset QR / Barcode</h2>
+    <div id="reader"></div>
+    <button id="btn-scan" class="btn btn-secondary" onclick="toggleScanner()">Start Camera Scan</button>
+    <div class="data-row" style="margin-top: 12px;">
+      <span>Scanned Code:</span>
+      <span id="scan-result" class="data-value">None</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📸 2. Site Photo Capture</h2>
+    <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none" onchange="onPhotoSelected(event)">
+    <button class="btn btn-secondary" onclick="document.getElementById('photo-input').click()">Capture Site Photo</button>
+    <div id="photo-preview"></div>
+  </div>
+
+  <div class="card">
+    <button id="btn-submit" class="btn btn-success" onclick="handleSubmit()">Submit Field Record</button>
+    <div id="status-msg" class="status-banner"></div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
