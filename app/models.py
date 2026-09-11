@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, DateTime, Boolean, Integer, JSON, ForeignKey
+from sqlalchemy import Column, String, Text, DateTime, Boolean, Integer, JSON, ForeignKey, Float
 from sqlalchemy.sql import func
 from app.database import Base
 
@@ -41,4 +41,21 @@ class DeadLetterQueue(Base):
     error_reason = Column(Text, nullable=False)
     attempts = Column(Integer, nullable=False, default=0)
     payload = Column(JSON, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class AIReviewQueue(Base):
+    """
+    Stores AI-generated intent classifications and suggested replies.
+    Requires human supervisor approval before any communication is dispatched.
+    """
+    __tablename__ = "ai_reviews"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_id = Column(String(64), ForeignKey("events.id", ondelete="CASCADE"), index=True, nullable=False)
+    intent = Column(String(50), nullable=False)  # booking_request, complaint, status_query, other
+    suggested_reply = Column(Text, nullable=False)
+    model_name = Column(String(50), nullable=False)
+    latency_ms = Column(Float, nullable=False)
+    tokens_used = Column(Integer, nullable=False, default=0)
+    status = Column(String(30), nullable=False, default="PENDING_HUMAN_REVIEW")
     created_at = Column(DateTime(timezone=True), server_default=func.now())

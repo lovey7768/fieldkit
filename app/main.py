@@ -9,8 +9,10 @@ import os
 
 from app.config import settings
 from app.security import verify_hmac_signature
-from app.database import init_db
+from app.database import init_db, AsyncSessionLocal
+from sqlalchemy import select
 import app.models  # noqa: F401 — registers ORM models on Base.metadata before init_db()
+from app.models import AIReviewQueue
 
 redis_client: aioredis.Redis | None = None
 
@@ -109,3 +111,28 @@ async def field_scan_intake(request: Request):
         "message": "Scan record queued for background processing",
         "client_uuid": client_uuid
     }
+
+@app.get("/api/reviews/pending", status_code=status.HTTP_200_OK)
+async def list_pending_ai_reviews():
+    """Returns AI-drafted responses awaiting human dispatcher review."""
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(AIReviewQueue)
+            .where(AIReviewQueue.status == "PENDING_HUMAN_REVIEW")
+            .order_by(AIReviewQueue.created_at.desc())
+        )
+        reviews = result.scalars().all()
+        return [
+            {
+                "id": r.id,
+                "event_id": r.event_id,
+                "intent": r.intent,
+                "suggested_reply": r.suggested_reply,
+                "model_name": r.model_name,
+                "latency_ms": r.latency_ms,
+                "tokens_used": r.tokens_used,
+                "status": r.status,
+                "created_at": r.created_at.isoformat() if r.created_at else None
+            }
+            for r in reviews
+        ]

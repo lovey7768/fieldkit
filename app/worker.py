@@ -4,9 +4,10 @@ import logging
 import redis.asyncio as aioredis
 from app.config import settings
 from app.database import AsyncSessionLocal, init_db
-from app.models import EventRecord, PIIVault, DeadLetterQueue
+from app.models import EventRecord, PIIVault, DeadLetterQueue, AIReviewQueue
 from app.pii import mask_payload_recursively
 from app.erp import send_to_erp
+from app.ai import classify_and_draft_reply
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("FieldKitWorker")
@@ -56,7 +57,25 @@ async def process_single_event(event_id: str, raw_data_str: str) -> None:
         await session.commit()
         logger.info(f"Event {event_id} masked and persisted to DB.")
 
-        # 4. Outbound ERP Sync with retries & backoff
+        # 4. Part B: AI Intent Classification & Draft (strictly on masked_payload)
+        try:
+            ai_result = await classify_and_draft_reply(masked_payload)
+            ai_entry = AIReviewQueue(
+                event_id=event_id,
+                intent=ai_result["intent"],
+                suggested_reply=ai_result["suggested_reply"],
+                model_name=ai_result["model"],
+                latency_ms=ai_result["latency_ms"],
+                tokens_used=ai_result["tokens_used"],
+                status="PENDING_HUMAN_REVIEW"
+            )
+            session.add(ai_entry)
+            await session.commit()
+            logger.info(f"AI classified {event_id} as '{ai_result['intent']}' ({ai_result['latency_ms']}ms)")
+        except Exception as ai_exc:
+            logger.error(f"Non-blocking AI classification failure for {event_id}: {ai_exc}")
+
+        # 5. Outbound ERP Sync with retries & backoff
         summary_payload = {
             "ref_id": event_id,
             "type": masked_payload.get("type", "field_event"),
