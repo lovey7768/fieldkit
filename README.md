@@ -51,5 +51,59 @@ FieldKit is an event-driven edge platform built for field service crews and back
           │  • `dead_letter_events`   │                                      │    Terminal Retries       │
           │  • `ai_reviews` (Pending) │                                      └───────────────────────────┘
           └───────────────────────────┘
+```
 
+---
 
+## 🔄 ERP Sync Boundary
+
+**Stays in FieldKit (operational edge):**
+Sub-second barcode/QR ingestion, raw photo uploads, offline client queuing, HMAC-verified webhook intake, PII masking vault, real-time field telemetry, and AI classification drafts awaiting human review. These require low-latency, edge-local persistence that would be too chatty or too sensitive to funnel live through an ERP.
+
+**Belongs in the ERP (back-office system of record):**
+Invoicing and general ledger entries, customer Master Service Agreements, inventory and spare parts valuation, crew payroll and scheduling, supplier procurement, and finalized job completion records. FieldKit forwards a `summary_payload` (masked, de-identified) to the ERP REST API only after local persistence and AI review are complete. The ERP never receives raw event bytes or reversible PII mappings.
+
+---
+
+## 🚀 One-Command Start
+
+```bash
+git clone https://github.com/lovey7768/fieldkit.git
+cd fieldkit
+docker compose up --build
+```
+
+| Service | Address | Description |
+|---|---|---|
+| Mobile Field PWA | http://localhost:8000 | Camera QR scanner + offline capture UI |
+| API Docs (Swagger) | http://localhost:8000/docs | Interactive endpoint explorer |
+| Pending AI Reviews | http://localhost:8000/api/reviews/pending | Human-in-the-loop review queue |
+| Mock ERP | http://localhost:8080 | Standalone ERP simulator |
+
+---
+
+## 🧪 Run the Test Suite
+
+```bash
+docker compose exec api pytest tests/ -v
+```
+
+**14 tests across 5 files — all failure paths covered:**
+- `test_intake.py` — Invalid HMAC → 401, duplicate dedup via Redis SETNX
+- `test_pii.py` — Multi-country phone/email masking, recursive payload traversal
+- `test_worker_resilience.py` — Healthy ERP flow, ERP-down → DLQ routing
+- `test_offline_sync.py` — PWA serve, field scan ingestion, client UUID dedup
+- `test_ai_integration.py` — Zero PII leakage to LLM, `PENDING_HUMAN_REVIEW` persistence
+
+---
+
+## 📚 Documentation
+
+- **[DESIGN.md](DESIGN.md)** — Multi-tenant architecture, fleet business line adaptability, ERP boundaries, AI governance
+- **[ANSWERS.md](ANSWERS.md)** — Engineering question responses (Parts D)
+
+---
+
+## 📄 License
+
+MIT
